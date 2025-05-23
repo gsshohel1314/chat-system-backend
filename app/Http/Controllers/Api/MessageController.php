@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Chat;
 use App\Models\User;
+use App\Events\ChatEvent;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -96,7 +97,8 @@ class MessageController extends Controller
             'message' => $request->message,
         ]);
 
-        // Later here: broadcast event
+        // broadcast event
+        broadcast(new ChatEvent($chat))->toOthers();
 
         return response()->json($chat);
     }
