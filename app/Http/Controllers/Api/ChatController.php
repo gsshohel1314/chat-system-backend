@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Chat;
+use App\Events\ChatEvent;
 use App\Traits\ApiResponse;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
@@ -13,9 +14,8 @@ use App\Http\Resources\MessageResource;
 class ChatController extends Controller
 {
     use ApiResponse;
-    
-    // Get messages of a conversation
-    public function messages(Request $request, Conversation $conversation): JsonResponse
+
+    public function getMessages(Request $request, Conversation $conversation): JsonResponse
     {
         $userId = $request->user()->id;
 
@@ -32,31 +32,38 @@ class ChatController extends Controller
         );
     }
 
-    // Send a new message in a conversation
-    public function sendMessage(Request $request, Conversation $conversation): JsonResponse
+    public function sendMessage(Request $request)
     {
         $request->validate([
+            'receiver_id' => 'required|exists:users,id',
             'message' => 'required|string|max:1000',
         ]);
 
-        $userId = $request->user()->id;
+        $senderId = $request->user()->id;
+        $receiverId = $request->receiver_id;
 
-        // Authorization: only users in the conversation
-        if (!in_array($userId, [$conversation->user_one_id, $conversation->user_two_id])) {
-            return $this->errorResponse('Unauthorized to send message', [], 403);
+        $conversation = Conversation::where(function ($query) use ($senderId, $receiverId) {
+            $query->where('user_one_id', $senderId)->where('user_two_id', $receiverId);
+        })->orWhere(function ($query) use ($senderId, $receiverId) {
+            $query->where('user_one_id', $receiverId)->where('user_two_id', $senderId);
+        })->first();
+
+        if (!$conversation) {
+            $conversation = Conversation::create([
+                'user_one_id' => $senderId,
+                'user_two_id' => $receiverId,
+            ]);
         }
-
-        // Determine the receiver ID
-        $receiverId = $conversation->user_one_id == $userId ? $conversation->user_two_id : $conversation->user_one_id;
 
         $chat = Chat::create([
             'conversation_id' => $conversation->id,
-            'sender_id' => $userId,
+            'sender_id' => $senderId,
             'receiver_id' => $receiverId,
             'message' => $request->message,
         ]);
 
-        // TODO: Broadcast the message event here (later)
+        // broadcast event
+        broadcast(new ChatEvent($chat))->toOthers();
 
         return $this->successResponse(
             new MessageResource($chat->load('sender:id,name')),

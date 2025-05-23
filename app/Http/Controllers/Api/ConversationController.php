@@ -8,14 +8,12 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationListResource;
-use App\Http\Resources\ConversationDetailResource;
 
 class ConversationController extends Controller
 {
     use ApiResponse;
-    
-    // List all conversations of the authenticated user
-    public function index(Request $request): JsonResponse
+
+    public function getConversations(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
 
@@ -36,37 +34,6 @@ class ConversationController extends Controller
         return $this->successResponse(
             ConversationListResource::collection($conversations),
             'Conversations fetched successfully'
-        );
-    }
-
-    // Start or get existing conversation between two users
-    public function start(Request $request): JsonResponse
-    {
-        $request->validate([
-            'receiver_id' => 'required|exists:users,id|not_in:' . $request->user()->id,
-        ]);
-
-        $senderId = $request->user()->id;
-        $receiverId = $request->receiver_id;
-
-        $conversation = Conversation::where(function ($query) use ($senderId, $receiverId) {
-            $query->where('user_one_id', $senderId)
-                ->where('user_two_id', $receiverId);
-        })->orWhere(function ($query) use ($senderId, $receiverId) {
-            $query->where('user_one_id', $receiverId)
-                ->where('user_two_id', $senderId);
-        })->first();
-
-        if (!$conversation) {
-            $conversation = Conversation::create([
-                'user_one_id' => $senderId,
-                'user_two_id' => $receiverId,
-            ]);
-        }
-
-        return $this->successResponse(
-            new ConversationDetailResource($conversation),
-            'Conversation started successfully'
         );
     }
 }

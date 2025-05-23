@@ -13,8 +13,7 @@ class UserController extends Controller
 {
     use ApiResponse;
     
-    // Search users by name or email, excluding current user
-    public function search(Request $request): JsonResponse
+    public function searchUsers(Request $request): JsonResponse
     {
         $request->validate([
             'q' => 'required|string|min:1'
@@ -30,11 +29,9 @@ class UserController extends Controller
             ->select('id', 'name', 'email')
             ->limit(10)
             ->get();
-            // ->paginate(10);
 
         return $this->successResponse(
             UserSearchResource::collection($users),
-            // UserSearchResource::collection($users)->response()->getData(true),
             'Users fetched successfully'
         );
     }
