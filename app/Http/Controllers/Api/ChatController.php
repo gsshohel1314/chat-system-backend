@@ -9,7 +9,8 @@ use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\MessageResource;
+use App\Http\Resources\MessageListResource;
+use App\Http\Resources\MessageSendResource;
 
 class ChatController extends Controller
 {
@@ -27,7 +28,7 @@ class ChatController extends Controller
         $messages = $conversation->messages()->with('sender:id,name')->orderBy('created_at')->get();
 
         return $this->successResponse(
-            MessageResource::collection($messages),
+            MessageListResource::collection($messages),
             'Messages fetched successfully'
         );
     }
@@ -66,7 +67,7 @@ class ChatController extends Controller
         broadcast(new ChatEvent($chat))->toOthers();
 
         return $this->successResponse(
-            new MessageResource($chat->load('sender:id,name')),
+            new MessageSendResource($chat->load('sender:id,name,email')),
             'Message sent successfully',
             201
         );

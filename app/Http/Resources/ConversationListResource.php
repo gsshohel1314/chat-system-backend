@@ -16,6 +16,8 @@ class ConversationListResource extends JsonResource
     {
         return [
             'id'    => $this->id,
+            'user_one_id' => $this->user_one_id,
+            'user_two_id' => $this->user_two_id,
             'user_one' => [
                 'id'    => $this->userOne->id,
                 'name'  => $this->userOne->name,
